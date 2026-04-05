@@ -14,8 +14,8 @@ The project includes:
 
 ```text
 .
-├── Dataset/
-├── server/
+├── Dataset /
+├── server /
 │   └── app.py
 ├── Dockerfile
 ├── inference.py
