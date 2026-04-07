@@ -274,13 +274,28 @@ def reward_treatment(predicted_treatment: Any, density_result: Optional[str]) ->
     return 0.3
 
 
-def reward_follow_up_interval(predicted_interval: Any, ground_truth_interval: str) -> float:
-    """Exact match = 1.0, adjacent interval = 0.5, otherwise 0.0."""
+def reward_follow_up_interval(predicted_interval: Any, density_class: Optional[str]) -> float:
+    """Grade follow-up interval using the same density-first lookup as derive_follow_up_interval.
+
+    Expected interval is derived identically to derive_follow_up_interval():
+      - osteoporotic → 3_months
+      - osteopenic   → 6_months
+      - normal / other → 12_months
+
+    Scoring: exact match = 1.0, one interval off = 0.5, two intervals off = 0.0.
+    """
+    if density_class == "osteoporotic":
+        expected = "3_months"
+    elif density_class == "osteopenic":
+        expected = "6_months"
+    else:
+        expected = "12_months"
+
     if predicted_interval not in FOLLOW_UP_INDEX_MAP:
         return 0.0
 
     distance = abs(
-        FOLLOW_UP_INDEX_MAP[predicted_interval] - FOLLOW_UP_INDEX_MAP[ground_truth_interval]
+        FOLLOW_UP_INDEX_MAP[predicted_interval] - FOLLOW_UP_INDEX_MAP[expected]
     )
     if distance == 0:
         return 1.0
@@ -761,20 +776,28 @@ class BoneEnv:
         return reward
 
     def _handle_follow_up_step(self, task_name: Optional[str], action: Dict[str, Any], info: Dict[str, Any]) -> float:
-        gt_density = derive_density_class(self._current_state["mean_intensity"])
-        gt_risk = self._compute_ground_truth_risk(self._current_state, self.patient_meta)
-        gt_treatment = derive_treatment_protocol(gt_density, gt_risk, self.patient_meta)
-        gt_follow_up = derive_follow_up_interval(
-            gt_density, gt_risk, gt_treatment, self.patient_meta
-        )
+        # Use the episode-reported density (what the LLM observed at step 0),
+        # falling back to the image-derived ground truth if unavailable.
+        density_for_followup = self.episode_state.get("density_result")
+        if density_for_followup not in ("osteoporotic", "osteopenic", "normal"):
+            density_for_followup = derive_density_class(self._current_state["mean_intensity"])
+
+        # Compute expected interval using the same density-first lookup.
+        if density_for_followup == "osteoporotic":
+            gt_follow_up = "3_months"
+        elif density_for_followup == "osteopenic":
+            gt_follow_up = "6_months"
+        else:
+            gt_follow_up = "12_months"
+
         predicted_follow_up = (
             action.get("follow_up_interval") if task_name == STEP_TO_TASK[3] else None
         )
-        follow_up_score = reward_follow_up_interval(predicted_follow_up, gt_follow_up)
+        follow_up_score = reward_follow_up_interval(predicted_follow_up, density_for_followup)
 
         self.episode_state["follow_up_interval_result"] = predicted_follow_up
         self._task_scores["follow_up_interval"] = [follow_up_score]
-        info["ground_truth"] = {"follow_up_interval": gt_follow_up}
+        info["ground_truth"] = {"follow_up_interval": gt_follow_up, "density_used": density_for_followup}
         info["parsed_action"] = {"follow_up_interval": predicted_follow_up}
         return follow_up_score
 
