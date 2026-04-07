@@ -1,0 +1,56 @@
+{
+  "summary": {
+    "task_name": "Vertebone-AI",
+    "episodes": 1,
+    "mean_score": 0.6726,
+    "std_dev": 0.0,
+    "success_rate": 1.0,
+    "per_step_mean_reward": [
+      0.5782,
+      0.745,
+      0.54,
+      0.5,
+      1.0
+    ]
+  },
+  "episodes": [
+    {
+      "episode": 1,
+      "success": true,
+      "steps": 5,
+      "score": 0.6726,
+      "rewards": [
+        0.5782,
+        0.745,
+        0.54,
+        0.5,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.83,
+      "treatment": "medication",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "M",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.5782,
+          "risk_score": 0.745,
+          "treatment_score": 0.54,
+          "follow_up_score": 0.5,
+          "lifestyle_score": 1.0,
+          "total_score": 0.6726
+        }
+      }
+    }
+  ]
+}

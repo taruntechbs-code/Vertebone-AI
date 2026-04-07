@@ -1,145 +1,75 @@
-# Bone OpenEnv Environment
+# VerteBone-AI
+![Python 3.10](https://img.shields.io/badge/python-3.10-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
+![Qwen2.5-72B](https://img.shields.io/badge/Qwen-2.5--72B-orange)
 
-This repository contains an OpenEnv-compatible reinforcement learning environment for MRI-based bone quality assessment and vertebral fracture risk prediction.
+VerteBone-AI is a reinforcement learning environment for vertebral bone density analysis from MRI-derived texture features. Each episode simulates a clinical decision workflow that starts with density classification, moves through fracture risk estimation, and culminates in treatment planning, while optional extended steps model follow-up cadence and lifestyle counseling for longer-horizon RL evaluation.
 
-The project includes:
+## Core Pipeline
+The clinical core of VerteBone-AI follows a 3-step pipeline:
 
-- `models.py` with the `BoneEnv` environment and task graders
-- `inference.py` for end-to-end inference with `[START]`, `[STEP]`, and `[END]` logs
-- `server/app.py` exposing the environment through FastAPI endpoints
-- `openenv.yaml` describing the environment configuration
-- `Dataset/` containing the MRI image inputs
+1. Density classification
+2. Fracture risk prediction
+3. Treatment recommendation
 
-## Project Structure
+The current environment extends that core episode with:
 
+4. Follow-up interval selection
+5. Lifestyle recommendation
+
+## Observation Space
+Each observation is a structured dictionary built from image-derived features and patient metadata:
+
+- `mean_intensity`
+- `std_intensity`
+- `edge_density`
+- `homogeneity`
+- `contrast`
+- `energy`
+- `correlation`
+- `age`
+- `sex`
+- `bmi`
+- `previous_fracture`
+- `glucocorticoid_use`
+
+Later steps also include intermediate outputs such as `density_result`, `risk_result`, `treatment_result`, and `follow_up_interval_result`.
+
+## Action Spaces
+Actions are task-specific:
+
+- `BoneDensityClassification`: `osteoporotic`, `osteopenic`, `normal`
+- `FractureRiskPrediction`: continuous float in `[0.0, 1.0]`
+- `TreatmentRecommendation`: `no_intervention`, `lifestyle_modification`, `physical_therapy`, `medication`, `surgical_consultation`
+- `FollowUpInterval`: `3_months`, `6_months`, `12_months`
+- `LifestyleRecommendation`: `calcium_supplement`, `exercise`, `both`, `none`
+
+## Reward Design
+VerteBone-AI uses clinically-inspired local rewards so each decision contributes interpretable signal:
+
+- Density reward blends categorical correctness with image feature confidence, so different scans can produce different partial credit even when the class label is close.
+- Fracture risk reward is proportional to numeric error against a FRAX-inspired target that includes age, BMI, fracture history, glucocorticoid exposure, and a modest post-menopausal female risk adjustment.
+- Treatment reward combines rule-based category distance with an LLM clinical appropriateness score.
+- Follow-up interval reward favors exact matches and gives partial credit for adjacent time windows.
+- Lifestyle reward gives credit for overlapping recommendations such as `both` vs `exercise`.
+
+## Example Log Output
 ```text
-.
-├── Dataset/
-├── server/
-│   └── app.py
-├── Dockerfile
-├── inference.py
-├── models.py
-├── openenv.yaml
-├── requirements.txt
-└── test_env.py
+[START] task=Vertebone-AI env=vertebone model=Qwen/Qwen2.5-72B-Instruct
+[STEP] step=1 action=osteoporotic reward=0.88 done=false error=null
+[STEP] step=2 action=0.67 reward=0.79 done=false error=null
+[STEP] step=3 action=medication reward=0.54 done=false error=null
+[STEP] step=4 action=6_months reward=1.00 done=false error=null
+[STEP] step=5 action=both reward=1.00 done=true error=null
+[END] success=true steps=5 score=0.84 rewards=0.88,0.79,0.54,1.00,1.00 density_acc=osteoporotic fracture_risk=0.67 treatment=medication follow_up_interval=6_months lifestyle_recommendation=both sex=F error_rate=0.00
+[EVAL] episodes=50 mean_score=0.61 std=0.12 success_rate=72% per_step_mean=0.58,0.61,0.49,0.66,0.71
 ```
 
-## Requirements
-
-- Python 3.11 recommended
-- Dataset available under `Dataset/`
-
-Install dependencies:
-
+## Running Locally
 ```bash
 pip install -r requirements.txt
-```
-
-## Environment Variables
-
-The project uses the following environment variables:
-
-- `DATASET_DIR` default: `Dataset`
-- `API_BASE_URL` default: `https://api.openai.com/v1`
-- `MODEL_NAME` default: `meta-llama/Llama-3.1-8B-Instruct`
-- `HF_TOKEN` default: empty
-
-## Run Local Validation
-
-Use the quick validation script:
-
-```bash
-python test_env.py
-```
-
-This checks that the environment initializes, resets correctly, steps through the dataset, and produces final task scores.
-
-## Run Inference
-
-Run the OpenEnv inference script:
-
-```bash
+set HF_TOKEN=hf_your_token_here
+set API_BASE_URL=https://router.huggingface.co/v1
+set MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
 python inference.py
 ```
-
-The script:
-
-- initializes `BoneEnv`
-- processes dataset images one by one
-- queries the configured model or uses fallback logic if needed
-- prints structured progress logs and final scores
-
-## Run HTTP Server
-
-Start the FastAPI server locally:
-
-```bash
-uvicorn server.app:app --host 0.0.0.0 --port 7860
-```
-
-Available endpoints:
-
-- `POST /reset`
-- `POST /step`
-- `GET /state`
-
-### Example Requests
-
-Reset the environment:
-
-```bash
-curl -X POST http://127.0.0.1:7860/reset
-```
-
-Take a step:
-
-```bash
-curl -X POST http://127.0.0.1:7860/step \
-  -H "Content-Type: application/json" \
-  -d "{\"action\":\"medium_risk\"}"
-```
-
-Fetch current state:
-
-```bash
-curl http://127.0.0.1:7860/state
-```
-
-## Docker
-
-Build the image:
-
-```bash
-docker build -t bone-openenv .
-```
-
-Run the container:
-
-```bash
-docker run -p 7860:7860 bone-openenv
-```
-
-The container starts the FastAPI server with:
-
-```bash
-uvicorn server.app:app --host 0.0.0.0 --port 7860
-```
-
-## OpenEnv Configuration
-
-The environment is described in `openenv.yaml` with:
-
-- entry point: `models:BoneEnv`
-- action space: `low_risk`, `medium_risk`, `high_risk`
-- dataset path: `Dataset/`
-- three grading tasks:
-  - Bone Density Classification
-  - Fracture Risk Prediction
-  - Treatment Recommendation
-
-## Notes
-
-- `Dataset/` is part of the project and should remain included in the repository.
-- The environment logic lives in `models.py`.
-- The server layer in `server/app.py` exposes the environment without changing the underlying reward or transition logic.

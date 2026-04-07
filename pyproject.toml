@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "Vertebone-AI"
+version = "1.0.0"
+description = "MRI-based Bone Quality and Vertebral Risk Assessment RL Environment"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "openai",
+    "numpy",
+    "opencv-python",
+    "scikit-image",
+    "fastapi",
+    "uvicorn[standard]",
+    "openenv-core>=0.2.0"
+]
+[project.scripts]
+server = "server.app:main"
+[tool.hatch.build.targets.wheel]
+packages = ["."]

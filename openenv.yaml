@@ -1,85 +1,14 @@
-# openenv.yaml — OpenEnv configuration for MRI Bone Quality & Vertebral Risk Assessment
-
-environment:
-  name: "mri-bone-quality-vertebral-risk"
-  description: >
-    An RL environment for MRI-based bone quality assessment and vertebral fracture
-    risk prediction. The agent processes grayscale spine MRI images, extracts
-    bone-density features, and classifies each scan as low_risk, medium_risk,
-    or high_risk across three clinical tasks.
-  version: "1.0.0"
-
-entry_point: "models:BoneEnv"
-
-dataset:
-  path: "Dataset/"
-  format: "jpg"
-  description: "Grayscale MRI spine images (256×256 after preprocessing)"
-
-state:
-  type: "dict"
-  features:
-    - name: "mean_intensity"
-      type: "float"
-      description: "Average pixel intensity — proxy for bone mineral density"
-    - name: "std_intensity"
-      type: "float"
-      description: "Pixel standard deviation — structural variation measure"
-    - name: "edge_density"
-      type: "float"
-      description: "Fraction of edge pixels via Canny — vertebra clarity"
-
-actions:
-  type: "discrete"
-  choices:
-    - "low_risk"
-    - "medium_risk"
-    - "high_risk"
-
-reward:
-  formula: "1 - abs(predicted_risk_value - ground_truth_risk_score)"
-  range: [0.0, 1.0]
-  description: >
-    Deterministic reward comparing the agent's predicted risk level against
-    a ground-truth score derived from image features. No randomness.
-
+env_id: vertebone
+task: Vertebone-AI
+benchmark: vertebone
+entry_point: server.app:main
+max_steps: 5
+obs_type: dict
+action_type: str
+reward_range: [0.0, 1.0]
 tasks:
-  - name: "Bone Density Classification"
-    id: "bone_density"
-    description: >
-      Classify each MRI scan's bone density risk level based on mean pixel
-      intensity and structural variation.
-    grader: "models:BoneDensityGrader"
-    score_range: [0.0, 1.0]
-
-  - name: "Fracture Risk Prediction"
-    id: "fracture_risk"
-    description: >
-      Predict vertebral fracture risk by combining bone density weakness
-      with edge clarity analysis.
-    grader: "models:FractureRiskGrader"
-    score_range: [0.0, 1.0]
-
-  - name: "Treatment Recommendation"
-    id: "treatment"
-    description: >
-      Determine treatment urgency by aggregating bone density and fracture
-      risk factors.
-    grader: "models:TreatmentRecommendationGrader"
-    score_range: [0.0, 1.0]
-
-inference:
-  script: "inference.py"
-  env_vars:
-    - "API_BASE_URL"
-    - "MODEL_NAME"
-    - "HF_TOKEN"
-  log_format:
-    start: "[START]"
-    step: "[STEP]"
-    end: "[END]"
-
-constraints:
-  max_runtime_minutes: 20
-  max_vcpu: 2
-  max_ram_gb: 8
+  - BoneDensityClassification
+  - FractureRiskPrediction
+  - TreatmentProtocol
+  - FollowUpInterval
+  - LifestyleRecommendation

@@ -1,11 +1,7 @@
 """Quick validation test for the BoneEnv OpenEnv environment."""
-from models import (
-    BoneEnv,
-    BoneDensityGrader,
-    FractureRiskGrader,
-    TreatmentRecommendationGrader,
-    ACTION_SPACE,
-)
+
+from models import BoneDensityGrader, BoneEnv, FractureRiskGrader, TreatmentRecommendationGrader
+
 
 print("Running environment validation...")
 
@@ -13,54 +9,56 @@ try:
     env = BoneEnv("Dataset")
 except Exception as e:
     print(f"Failed to initialize environment: {e}")
-    exit(1)
+    raise SystemExit(1)
+
 obs = env.reset()
 print("=== RESET OK ===")
-print(f"State keys: {list(obs.keys())}")
-print(f"First image: {obs['image_file']}")
-print(f"Features: {obs['features']}")
-print(f"Action space: {ACTION_SPACE}")
-print()
+print(f"Step 0 observation: {obs}")
+assert obs["step"] == 0
+assert set(obs.keys()) == {"mean_intensity", "std_intensity", "edge_density", "step"}
 
-total_r = 0.0
-step = 0
+obs, reward, done, info = env.step(
+    {
+        "task": "BoneDensityClassification",
+        "action": {"density_class": "osteopenic"},
+    }
+)
+print(f"Task1 reward: {reward}")
+assert done is False
+assert obs["step"] == 1
+assert "density_result" in obs
+assert "age_factor" in obs
 
-while not obs["done"]:
-    features = obs["features"]
-    mean_n = features["mean_intensity"] / 255.0
-    edge_n = min(features["edge_density"] / 0.3, 1.0)
+obs, reward, done, info = env.step(
+    {
+        "task": "FractureRiskPrediction",
+        "action": {"risk_score": 0.65},
+    }
+)
+print(f"Task2 reward: {reward}")
+assert done is False
+assert obs["step"] == 2
+assert "risk_result" in obs
+assert "vertebra_region" in obs
 
-    if mean_n > 0.6 and edge_n > 0.5:
-        action = "low_risk"
-    elif mean_n < 0.35:
-        action = "high_risk"
-    else:
-        action = "medium_risk"
-
-    obs, reward, done, info = env.step(action)
-    total_r += reward
-    step += 1
-    gt = info["ground_truth"]
-    print(
-        f"Step {step:2d} | {info['action']:12s} | "
-        f"reward={reward:.4f} | "
-        f"gt_density={gt['bone_density']:.4f} "
-        f"gt_fracture={gt['fracture_risk']:.4f} "
-        f"gt_treatment={gt['treatment']:.4f}"
-    )
-
-print()
-print(f"Total reward across {step} steps: {total_r:.4f}")
-print(f"Average reward: {total_r / step if step > 0 else 0.0:.4f}")
-print()
+obs, reward, done, info = env.step(
+    {
+        "task": "TreatmentProtocol",
+        "action": {"treatment": "physical_therapy"},
+    }
+)
+print(f"Task3 reward: {reward}")
+assert done is True
+assert "episode_summary" in info
 
 d = BoneDensityGrader.grade(env)
 f = FractureRiskGrader.grade(env)
 t = TreatmentRecommendationGrader.grade(env)
 
+print()
 print(f"Bone Density Classification : {d:.4f}")
 print(f"Fracture Risk Prediction    : {f:.4f}")
 print(f"Treatment Recommendation    : {t:.4f}")
-print(f"Overall Score               : {round((d + f + t) / 3, 4):.4f}")
+print(f"Episode Total Score         : {info['episode_summary']['total_score']:.4f}")
 print()
 print("=== ALL TESTS PASSED ===")
