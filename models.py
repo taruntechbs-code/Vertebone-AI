@@ -185,24 +185,17 @@ def derive_follow_up_interval(
     treatment: str,
     patient_meta: Dict[str, Any],
 ) -> str:
-    """Risk-based follow-up cadence using fracture_risk and density_result.
+    """Follow-up cadence determined solely by density_result.
 
-    Clinical logic:
-      - fracture_risk > 0.6  OR density == osteoporotic  → 3_months
-      - fracture_risk 0.3–0.6 OR density == osteopenic   → 6_months
-      - fracture_risk < 0.3  AND density == normal        → 12_months
+    Clinical logic (density is the primary deciding factor):
+      - osteoporotic → 3_months (always)
+      - osteopenic   → 6_months (always)
+      - normal       → 12_months (always)
     """
-    risk_value = float(risk_score or 0.0)
-
-    # High-risk: short follow-up
-    if risk_value > 0.6 or density_class == "osteoporotic":
+    if density_class == "osteoporotic":
         return "3_months"
-
-    # Moderate-risk: intermediate follow-up
-    if risk_value >= 0.3 or density_class == "osteopenic":
+    if density_class == "osteopenic":
         return "6_months"
-
-    # Low-risk: standard follow-up
     return "12_months"
 
 

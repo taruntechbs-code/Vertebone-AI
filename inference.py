@@ -131,19 +131,12 @@ def query_llm(client: OpenAI, obs: Dict[str, Any]) -> Dict[str, Any]:
         valid = TREATMENT_OPTIONS
     elif step == 3:
         task = "FollowUpInterval"
-        fracture_risk = obs.get("risk_result", "unknown")
         density_result = obs.get("density_result", "unknown")
         user_msg = (
             f"{prompt_text}\n\nImage features: {features_text}\n"
             f"Context: {context_text}\n\n"
-            f"fracture_risk={fracture_risk} — apply the rule strictly.\n"
-            f"density_result={density_result}\n\n"
-            "MANDATORY clinical rules — follow them exactly, no exceptions:\n"
-            "1. If fracture_risk is greater than 0.60, you MUST choose 3_months — no exceptions.\n"
-            "   Also choose 3_months if density_result is osteoporotic.\n"
-            "2. If fracture_risk is between 0.30 and 0.60 (inclusive), choose 6_months.\n"
-            "   Also choose 6_months if density_result is osteopenic.\n"
-            "3. If fracture_risk is below 0.30 AND density_result is normal, choose 12_months.\n\n"
+            f"density_result={density_result}. "
+            "Rules: osteoporotic=3_months, osteopenic=6_months, normal=12_months. "
             "Reply with exactly one option: 3_months, 6_months, or 12_months."
         )
         default = "6_months"
