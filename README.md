@@ -1,3 +1,12 @@
+---
+title: Vertebone AI
+emoji: 🦴
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # VerteBone-AI
 ![Python 3.10](https://img.shields.io/badge/python-3.10-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
