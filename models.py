@@ -105,6 +105,23 @@ DENSITY_INDEX_MAP: Dict[str, int] = {label: idx for idx, label in enumerate(DENS
 TREATMENT_INDEX_MAP: Dict[str, int] = {
     label: idx for idx, label in enumerate(TREATMENT_OPTIONS)
 }
+DENSITY_TREATMENT_RECOMMENDATIONS: Dict[str, Tuple[str, ...]] = {
+    "osteoporotic": ("medication", "surgical_consultation"),
+    "osteopenic": ("lifestyle_modification", "physical_therapy"),
+    "normal": ("no_intervention",),
+}
+DENSITY_TREATMENT_SEVERITY: Dict[str, int] = {
+    "normal": 0,
+    "osteopenic": 1,
+    "osteoporotic": 2,
+}
+TREATMENT_SEVERITY: Dict[str, int] = {
+    "no_intervention": 0,
+    "lifestyle_modification": 1,
+    "physical_therapy": 1,
+    "medication": 2,
+    "surgical_consultation": 2,
+}
 FOLLOW_UP_INDEX_MAP: Dict[str, int] = {
     label: idx for idx, label in enumerate(FOLLOW_UP_OPTIONS)
 }
@@ -238,19 +255,23 @@ def reward_risk_score(predicted_risk: Any, ground_truth_risk: float) -> Tuple[fl
     return round(score, 4), {}
 
 
-def reward_treatment(predicted_treatment: Any, ground_truth_treatment: str) -> float:
-    """Exact match = 1.0, adjacent category = 0.4, completely wrong = 0.0."""
-    if predicted_treatment not in TREATMENT_INDEX_MAP:
-        return 0.0
-
-    distance = abs(
-        TREATMENT_INDEX_MAP[predicted_treatment] - TREATMENT_INDEX_MAP[ground_truth_treatment]
+def reward_treatment(predicted_treatment: Any, density_result: Optional[str]) -> float:
+    """Reward treatment choice using density-driven clinical severity bands."""
+    recommended_treatments = DENSITY_TREATMENT_RECOMMENDATIONS.get(
+        str(density_result), tuple()
     )
-    if distance == 0:
+    if predicted_treatment in recommended_treatments:
         return 1.0
-    if distance == 1:
-        return 0.4
-    return 0.0
+
+    density_severity = DENSITY_TREATMENT_SEVERITY.get(str(density_result))
+    predicted_severity = TREATMENT_SEVERITY.get(str(predicted_treatment))
+    if density_severity is not None and predicted_severity is not None:
+        severity_gap = abs(predicted_severity - density_severity)
+        if severity_gap == 1:
+            return 0.6
+        if severity_gap >= 2:
+            return 0.0
+    return 0.3
 
 
 def reward_follow_up_interval(predicted_interval: Any, ground_truth_interval: str) -> float:
@@ -317,20 +338,30 @@ def llm_grade_treatment(
                 {
                     "role": "system",
                     "content": (
-                        "You are a clinical decision evaluator. Score the treatment "
-                        "recommendation from 0.0 to 1.0 based on clinical "
-                        "appropriateness. Respond with ONLY a decimal number between "
-                        "0.0 and 1.0, nothing else."
+                        "You are an expert clinical decision evaluator for bone health "
+                        "management. Score the proposed treatment from 0.0 to 1.0 based "
+                        "on clinical appropriateness for the provided density_result and "
+                        "fracture_risk. Use 1.0 for a clearly appropriate treatment, 0.6 "
+                        "for a partially appropriate but suboptimal treatment, and 0.0 "
+                        "for a clearly inappropriate treatment. Respond with ONLY a "
+                        "decimal number between 0.0 and 1.0."
                     ),
                 },
                 {
                     "role": "user",
                     "content": (
-                        f"Patient profile:\n- Bone density: {density_result}\n"
-                        f"- Fracture risk score: {risk_result}\n- Age: {age_factor}\n"
-                        f"- Vertebra region: {vertebra_region}\n\nRecommended treatment: "
-                        f"{treatment_chosen}\n\nScore this recommendation "
-                        "(0.0 = completely wrong, 1.0 = perfect). Reply with only a number."
+                        "Evaluate the clinical appropriateness of this treatment.\n"
+                        f"- density_result: {density_result}\n"
+                        f"- fracture_risk: {risk_result}\n"
+                        f"- age_factor: {age_factor}\n"
+                        f"- vertebra_region: {vertebra_region}\n"
+                        f"- proposed_treatment: {treatment_chosen}\n\n"
+                        "Clinical severity guidance:\n"
+                        "- osteoporotic -> medication or surgical_consultation\n"
+                        "- osteopenic -> lifestyle_modification or physical_therapy\n"
+                        "- normal -> no_intervention\n\n"
+                        "Score the proposed_treatment from 0.0 to 1.0 based on clinical "
+                        "appropriateness in this context. Reply with only the number."
                     ),
                 },
             ],
@@ -686,19 +717,24 @@ class BoneEnv:
         gt_treatment = derive_treatment_protocol(gt_density, gt_risk, self.patient_meta)
         predicted_treatment = action.get("treatment") if task_name == STEP_TO_TASK[2] else None
         predicted_treatment = predicted_treatment or "no_intervention"
-        rule_score = reward_treatment(predicted_treatment, gt_treatment)
-        # Deterministic llm_score from ground-truth risk — varies per episode
-        actual_risk = self._compute_ground_truth_risk(
-            self._current_state, self.patient_meta
+        density_context = (
+            density_for_treatment
+            if density_for_treatment in DENSITY_TREATMENT_RECOMMENDATIONS
+            else gt_density
         )
-        treatment_order = [
-            "no_intervention", "lifestyle_modification",
-            "physical_therapy", "medication", "surgical_consultation"
-        ]
-        expected_idx = min(4, int(actual_risk * 5))
-        predicted_idx = treatment_order.index(predicted_treatment) if predicted_treatment in treatment_order else 2
-        distance = abs(predicted_idx - expected_idx)
-        llm_score = round(max(0.0, 1.0 - distance * 0.25), 4)
+        risk_context = risk_for_treatment if risk_for_treatment is not None else gt_risk
+        rule_score = reward_treatment(predicted_treatment, density_context)
+        # Combine density-severity rules with the clinical appropriateness grader.
+        llm_score = round(
+            llm_grade_treatment(
+                density_context,
+                risk_context,
+                predicted_treatment,
+                self.episode_state.get("age_factor", self.base_age_factor),
+                self.episode_state.get("vertebra_region", "lumbar"),
+            ),
+            4,
+        )
         final_score = round(rule_score * 0.6 + llm_score * 0.4, 4)
 
         self.episode_state["density_result"] = density_for_treatment
@@ -709,8 +745,15 @@ class BoneEnv:
             "treatment": gt_treatment,
             "bone_density": gt_density,
             "fracture_risk": gt_risk,
+            "recommended_treatments": list(
+                DENSITY_TREATMENT_RECOMMENDATIONS.get(density_context, tuple())
+            ),
         }
         info["parsed_action"] = {"treatment": predicted_treatment}
+        info["context"] = {
+            "density_result": density_context,
+            "fracture_risk": risk_context,
+        }
         info["rule_score"] = rule_score
         info["llm_score"] = llm_score
         info["final_score"] = final_score
