@@ -185,17 +185,24 @@ def derive_follow_up_interval(
     treatment: str,
     patient_meta: Dict[str, Any],
 ) -> str:
-    """Follow-up cadence proxy based on current risk and intervention intensity."""
+    """Risk-based follow-up cadence using fracture_risk and density_result.
+
+    Clinical logic:
+      - fracture_risk > 0.6  OR density == osteoporotic  → 3_months
+      - fracture_risk 0.3–0.6 OR density == osteopenic   → 6_months
+      - fracture_risk < 0.3  AND density == normal        → 12_months
+    """
     risk_value = float(risk_score or 0.0)
-    if (
-        treatment == "surgical_consultation"
-        or risk_value >= 0.75
-        or patient_meta.get("previous_fracture")
-        or density_class == "osteoporotic"
-    ):
+
+    # High-risk: short follow-up
+    if risk_value > 0.6 or density_class == "osteoporotic":
         return "3_months"
-    if treatment == "medication" or risk_value >= 0.45 or patient_meta.get("glucocorticoid_use"):
+
+    # Moderate-risk: intermediate follow-up
+    if risk_value >= 0.3 or density_class == "osteopenic":
         return "6_months"
+
+    # Low-risk: standard follow-up
     return "12_months"
 
 
