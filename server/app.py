@@ -16,6 +16,11 @@ class StepRequest(BaseModel):
     task: Optional[str] = "BoneDensityClassification"
 
 
+@app.get("/")
+def root():
+    return {"status": "Vertebone AI 🦴", "tasks": 5, "version": "1.0"}
+
+
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
