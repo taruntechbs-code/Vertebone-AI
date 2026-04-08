@@ -2,14 +2,14 @@
   "summary": {
     "task_name": "Vertebone-AI",
     "episodes": 8,
-    "mean_score": 0.6078,
-    "std_dev": 0.0616,
+    "mean_score": 0.8225,
+    "std_dev": 0.0501,
     "success_rate": 1.0,
     "per_step_mean_reward": [
-      0.5705,
-      0.7362,
-      0.42,
-      0.3125,
+      0.571,
+      0.8416,
+      0.7,
+      1.0,
       1.0
     ]
   },
@@ -18,208 +18,18 @@
       "episode": 1,
       "success": true,
       "steps": 5,
-      "score": 0.5601,
-      "rewards": [
-        0.565,
-        0.9355,
-        0.3,
-        0.0,
-        1.0
-      ],
-      "density_acc": "osteopenic",
-      "fracture_risk": 0.37,
-      "treatment": "physical_therapy",
-      "follow_up_interval": "12_months",
-      "lifestyle_recommendation": "both",
-      "sex": "F",
-      "error_rate": 0.0,
-      "raw_info": {
-        "expected_task": "LifestyleRecommendation",
-        "step": 4,
-        "ground_truth": {
-          "lifestyle_recommendation": "both"
-        },
-        "parsed_action": {
-          "lifestyle_recommendation": "both"
-        },
-        "episode_summary": {
-          "density_score": 0.565,
-          "risk_score": 0.9355,
-          "treatment_score": 0.3,
-          "follow_up_score": 0.0,
-          "lifestyle_score": 1.0,
-          "total_score": 0.5601
-        }
-      }
-    },
-    {
-      "episode": 2,
-      "success": true,
-      "steps": 5,
-      "score": 0.6571,
-      "rewards": [
-        0.565,
-        0.6805,
-        0.54,
-        0.5,
-        1.0
-      ],
-      "density_acc": "osteopenic",
-      "fracture_risk": 0.63,
-      "treatment": "medication",
-      "follow_up_interval": "6_months",
-      "lifestyle_recommendation": "both",
-      "sex": "M",
-      "error_rate": 0.0,
-      "raw_info": {
-        "expected_task": "LifestyleRecommendation",
-        "step": 4,
-        "ground_truth": {
-          "lifestyle_recommendation": "both"
-        },
-        "parsed_action": {
-          "lifestyle_recommendation": "both"
-        },
-        "episode_summary": {
-          "density_score": 0.565,
-          "risk_score": 0.6805,
-          "treatment_score": 0.54,
-          "follow_up_score": 0.5,
-          "lifestyle_score": 1.0,
-          "total_score": 0.6571
-        }
-      }
-    },
-    {
-      "episode": 3,
-      "success": true,
-      "steps": 5,
-      "score": 0.6828,
-      "rewards": [
-        0.5782,
-        0.796,
-        0.54,
-        0.5,
-        1.0
-      ],
-      "density_acc": "osteopenic",
-      "fracture_risk": 0.73,
-      "treatment": "medication",
-      "follow_up_interval": "6_months",
-      "lifestyle_recommendation": "both",
-      "sex": "M",
-      "error_rate": 0.0,
-      "raw_info": {
-        "expected_task": "LifestyleRecommendation",
-        "step": 4,
-        "ground_truth": {
-          "lifestyle_recommendation": "both"
-        },
-        "parsed_action": {
-          "lifestyle_recommendation": "both"
-        },
-        "episode_summary": {
-          "density_score": 0.5782,
-          "risk_score": 0.796,
-          "treatment_score": 0.54,
-          "follow_up_score": 0.5,
-          "lifestyle_score": 1.0,
-          "total_score": 0.6828
-        }
-      }
-    },
-    {
-      "episode": 4,
-      "success": true,
-      "steps": 5,
-      "score": 0.6342,
-      "rewards": [
-        0.5782,
-        0.793,
-        0.3,
-        0.5,
-        1.0
-      ],
-      "density_acc": "osteopenic",
-      "fracture_risk": 0.63,
-      "treatment": "physical_therapy",
-      "follow_up_interval": "6_months",
-      "lifestyle_recommendation": "both",
-      "sex": "M",
-      "error_rate": 0.0,
-      "raw_info": {
-        "expected_task": "LifestyleRecommendation",
-        "step": 4,
-        "ground_truth": {
-          "lifestyle_recommendation": "both"
-        },
-        "parsed_action": {
-          "lifestyle_recommendation": "both"
-        },
-        "episode_summary": {
-          "density_score": 0.5782,
-          "risk_score": 0.793,
-          "treatment_score": 0.3,
-          "follow_up_score": 0.5,
-          "lifestyle_score": 1.0,
-          "total_score": 0.6342
-        }
-      }
-    },
-    {
-      "episode": 5,
-      "success": true,
-      "steps": 5,
-      "score": 0.4817,
-      "rewards": [
-        0.5797,
-        0.529,
-        0.3,
-        0.0,
-        1.0
-      ],
-      "density_acc": "osteopenic",
-      "fracture_risk": 0.37,
-      "treatment": "physical_therapy",
-      "follow_up_interval": "12_months",
-      "lifestyle_recommendation": "both",
-      "sex": "M",
-      "error_rate": 0.0,
-      "raw_info": {
-        "expected_task": "LifestyleRecommendation",
-        "step": 4,
-        "ground_truth": {
-          "lifestyle_recommendation": "both"
-        },
-        "parsed_action": {
-          "lifestyle_recommendation": "both"
-        },
-        "episode_summary": {
-          "density_score": 0.5797,
-          "risk_score": 0.529,
-          "treatment_score": 0.3,
-          "follow_up_score": 0.0,
-          "lifestyle_score": 1.0,
-          "total_score": 0.4817
-        }
-      }
-    },
-    {
-      "episode": 6,
-      "success": true,
-      "steps": 5,
-      "score": 0.5974,
+      "score": 0.7854,
       "rewards": [
         0.5656,
-        0.8815,
-        0.54,
-        0.0,
+        0.7615,
+        0.6,
+        1.0,
         1.0
       ],
       "density_acc": "osteopenic",
       "fracture_risk": 0.73,
       "treatment": "medication",
-      "follow_up_interval": "12_months",
+      "follow_up_interval": "6_months",
       "lifestyle_recommendation": "both",
       "sex": "M",
       "error_rate": 0.0,
@@ -234,66 +44,28 @@
         },
         "episode_summary": {
           "density_score": 0.5656,
-          "risk_score": 0.8815,
-          "treatment_score": 0.54,
-          "follow_up_score": 0.0,
+          "risk_score": 0.7615,
+          "treatment_score": 0.6,
+          "follow_up_score": 1.0,
           "lifestyle_score": 1.0,
-          "total_score": 0.5974
+          "total_score": 0.7854
         }
       }
     },
     {
-      "episode": 7,
+      "episode": 2,
       "success": true,
       "steps": 5,
-      "score": 0.5873,
+      "score": 0.8105,
       "rewards": [
-        0.5653,
-        0.571,
-        0.3,
-        0.5,
+        0.565,
+        0.8875,
+        0.6,
+        1.0,
         1.0
       ],
       "density_acc": "osteopenic",
-      "fracture_risk": 0.63,
-      "treatment": "physical_therapy",
-      "follow_up_interval": "6_months",
-      "lifestyle_recommendation": "both",
-      "sex": "F",
-      "error_rate": 0.0,
-      "raw_info": {
-        "expected_task": "LifestyleRecommendation",
-        "step": 4,
-        "ground_truth": {
-          "lifestyle_recommendation": "both"
-        },
-        "parsed_action": {
-          "lifestyle_recommendation": "both"
-        },
-        "episode_summary": {
-          "density_score": 0.5653,
-          "risk_score": 0.571,
-          "treatment_score": 0.3,
-          "follow_up_score": 0.5,
-          "lifestyle_score": 1.0,
-          "total_score": 0.5873
-        }
-      }
-    },
-    {
-      "episode": 8,
-      "success": true,
-      "steps": 5,
-      "score": 0.662,
-      "rewards": [
-        0.567,
-        0.703,
-        0.54,
-        0.5,
-        1.0
-      ],
-      "density_acc": "osteopenic",
-      "fracture_risk": 0.63,
+      "fracture_risk": 0.73,
       "treatment": "medication",
       "follow_up_interval": "6_months",
       "lifestyle_recommendation": "both",
@@ -309,12 +81,240 @@
           "lifestyle_recommendation": "both"
         },
         "episode_summary": {
-          "density_score": 0.567,
-          "risk_score": 0.703,
-          "treatment_score": 0.54,
-          "follow_up_score": 0.5,
+          "density_score": 0.565,
+          "risk_score": 0.8875,
+          "treatment_score": 0.6,
+          "follow_up_score": 1.0,
           "lifestyle_score": 1.0,
-          "total_score": 0.662
+          "total_score": 0.8105
+        }
+      }
+    },
+    {
+      "episode": 3,
+      "success": true,
+      "steps": 5,
+      "score": 0.9062,
+      "rewards": [
+        0.5788,
+        0.952,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.73,
+      "treatment": "physical_therapy",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "M",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.5788,
+          "risk_score": 0.952,
+          "treatment_score": 1.0,
+          "follow_up_score": 1.0,
+          "lifestyle_score": 1.0,
+          "total_score": 0.9062
+        }
+      }
+    },
+    {
+      "episode": 4,
+      "success": true,
+      "steps": 5,
+      "score": 0.7548,
+      "rewards": [
+        0.5788,
+        0.595,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.73,
+      "treatment": "medication",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "M",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.5788,
+          "risk_score": 0.595,
+          "treatment_score": 0.6,
+          "follow_up_score": 1.0,
+          "lifestyle_score": 1.0,
+          "total_score": 0.7548
+        }
+      }
+    },
+    {
+      "episode": 5,
+      "success": true,
+      "steps": 5,
+      "score": 0.8256,
+      "rewards": [
+        0.567,
+        0.961,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.63,
+      "treatment": "medication",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "M",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.567,
+          "risk_score": 0.961,
+          "treatment_score": 0.6,
+          "follow_up_score": 1.0,
+          "lifestyle_score": 1.0,
+          "total_score": 0.8256
+        }
+      }
+    },
+    {
+      "episode": 6,
+      "success": true,
+      "steps": 5,
+      "score": 0.8965,
+      "rewards": [
+        0.565,
+        0.9175,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.37,
+      "treatment": "physical_therapy",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "F",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.565,
+          "risk_score": 0.9175,
+          "treatment_score": 1.0,
+          "follow_up_score": 1.0,
+          "lifestyle_score": 1.0,
+          "total_score": 0.8965
+        }
+      }
+    },
+    {
+      "episode": 7,
+      "success": true,
+      "steps": 5,
+      "score": 0.7848,
+      "rewards": [
+        0.5792,
+        0.745,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.83,
+      "treatment": "medication",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "M",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.5792,
+          "risk_score": 0.745,
+          "treatment_score": 0.6,
+          "follow_up_score": 1.0,
+          "lifestyle_score": 1.0,
+          "total_score": 0.7848
+        }
+      }
+    },
+    {
+      "episode": 8,
+      "success": true,
+      "steps": 5,
+      "score": 0.8164,
+      "rewards": [
+        0.5688,
+        0.913,
+        0.6,
+        1.0,
+        1.0
+      ],
+      "density_acc": "osteopenic",
+      "fracture_risk": 0.67,
+      "treatment": "medication",
+      "follow_up_interval": "6_months",
+      "lifestyle_recommendation": "both",
+      "sex": "F",
+      "error_rate": 0.0,
+      "raw_info": {
+        "expected_task": "LifestyleRecommendation",
+        "step": 4,
+        "ground_truth": {
+          "lifestyle_recommendation": "both"
+        },
+        "parsed_action": {
+          "lifestyle_recommendation": "both"
+        },
+        "episode_summary": {
+          "density_score": 0.5688,
+          "risk_score": 0.913,
+          "treatment_score": 0.6,
+          "follow_up_score": 1.0,
+          "lifestyle_score": 1.0,
+          "total_score": 0.8164
         }
       }
     }
