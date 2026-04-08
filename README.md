@@ -8,6 +8,7 @@ pinned: false
 ---
 
 # VerteBone-AI
+🚀 **Live Demo:** [HuggingFace Space](https://huggingface.co/spaces/tarun00000007/Vertebone-AI)
 ![Python 3.10](https://img.shields.io/badge/python-3.10-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688)
 ![llama-3.3-70b-versatile](https://img.shields.io/badge/model-llama--3.3--70b--versatile-orange)
@@ -15,14 +16,11 @@ pinned: false
 VerteBone-AI is a reinforcement learning environment for vertebral bone density analysis from MRI-derived texture features. Each episode simulates a clinical decision workflow that starts with density classification, moves through fracture risk estimation, and culminates in treatment planning, while optional extended steps model follow-up cadence and lifestyle counseling for longer-horizon RL evaluation.
 
 ## Core Pipeline
-The clinical core of VerteBone-AI follows a 3-step pipeline:
+VerteBone-AI runs a 5-step clinical decision episode:
 
 1. Density classification
 2. Fracture risk prediction
 3. Treatment recommendation
-
-The current environment extends that core episode with:
-
 4. Follow-up interval selection
 5. Lifestyle recommendation
 
