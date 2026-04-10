@@ -27,6 +27,8 @@ TEMPERATURE = 0.7
 MAX_TOKENS = 150
 SUCCESS_SCORE_THRESHOLD = 0.1
 HF_API_KEY: str = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY") or ""
+if not HF_API_KEY:
+    raise ValueError("HF_TOKEN environment variable is required")
 DATASET_DIR: str = os.environ.get("DATASET_DIR", "Dataset")
 EVAL_EPISODES: int = int(os.getenv("EVAL_EPISODES", "8"))
 RESULTS_PATH: str = os.environ.get("RESULTS_PATH", "results.json")
