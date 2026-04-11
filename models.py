@@ -29,6 +29,10 @@ def clamp(value: float, lower: float = 0.0, upper: float = 1.0) -> float:
     return min(max(value, lower), upper)
 
 
+def clamp01(v):
+    return max(0.01, min(0.99, float(v)))
+
+
 def resolve_api_base_url(api_base: Optional[str]) -> Optional[str]:
     """Rewrite deprecated Hugging Face inference URLs to the current router."""
     if api_base == LEGACY_HF_API_URL:
@@ -231,28 +235,28 @@ def derive_lifestyle_recommendation(
 def reward_density_class(predicted_class: Any, ground_truth_class: str) -> float:
     """Exact match = 1.0, one-class-off = 0.5, two-classes-off = 0.0."""
     if predicted_class not in DENSITY_INDEX_MAP:
-        return 0.0
+        return clamp01(0.01)
 
     distance = abs(DENSITY_INDEX_MAP[predicted_class] - DENSITY_INDEX_MAP[ground_truth_class])
     if distance == 0:
-        return 1.0
+        return clamp01(0.99)
     if distance == 1:
-        return 0.5
-    return 0.0
+        return clamp01(0.5)
+    return clamp01(0.01)
 
 
 def reward_risk_score(predicted_risk: Any, ground_truth_risk: float) -> Tuple[float, Dict[str, Any]]:
     """Proportional reward for a continuous risk prediction."""
     if isinstance(predicted_risk, bool):
-        return 0.0, {"error": "risk_score must be a float"}
+        return clamp01(0.01), {"error": "risk_score must be a float"}
 
     try:
         predicted_float = clamp(float(predicted_risk))
     except (TypeError, ValueError):
-        return 0.0, {"error": "risk_score must be a float"}
+        return clamp01(0.01), {"error": "risk_score must be a float"}
 
     score = max(0.0, 1.0 - abs(predicted_float - ground_truth_risk) * 1.5)
-    return round(score, 4), {}
+    return round(clamp01(score), 4), {}
 
 
 def reward_treatment(predicted_treatment: Any, density_result: Optional[str]) -> float:
@@ -261,17 +265,17 @@ def reward_treatment(predicted_treatment: Any, density_result: Optional[str]) ->
         str(density_result), tuple()
     )
     if predicted_treatment in recommended_treatments:
-        return 1.0
+        return clamp01(0.99)
 
     density_severity = DENSITY_TREATMENT_SEVERITY.get(str(density_result))
     predicted_severity = TREATMENT_SEVERITY.get(str(predicted_treatment))
     if density_severity is not None and predicted_severity is not None:
         severity_gap = abs(predicted_severity - density_severity)
         if severity_gap == 1:
-            return 0.6
+            return clamp01(0.6)
         if severity_gap >= 2:
-            return 0.0
-    return 0.3
+            return clamp01(0.01)
+    return clamp01(0.3)
 
 
 def reward_follow_up_interval(predicted_interval: Any, density_class: Optional[str]) -> float:
@@ -292,16 +296,16 @@ def reward_follow_up_interval(predicted_interval: Any, density_class: Optional[s
         expected = "12_months"
 
     if predicted_interval not in FOLLOW_UP_INDEX_MAP:
-        return 0.0
+        return clamp01(0.01)
 
     distance = abs(
         FOLLOW_UP_INDEX_MAP[predicted_interval] - FOLLOW_UP_INDEX_MAP[expected]
     )
     if distance == 0:
-        return 1.0
+        return clamp01(0.99)
     if distance == 1:
-        return 0.5
-    return 0.0
+        return clamp01(0.5)
+    return clamp01(0.01)
 
 
 def reward_lifestyle_recommendation(predicted_lifestyle: Any, ground_truth_lifestyle: str) -> float:
@@ -313,15 +317,15 @@ def reward_lifestyle_recommendation(predicted_lifestyle: Any, ground_truth_lifes
         "none": set(),
     }
     if predicted_lifestyle not in option_map:
-        return 0.0
+        return clamp01(0.01)
     if predicted_lifestyle == ground_truth_lifestyle:
-        return 1.0
+        return clamp01(0.99)
 
     predicted_set = option_map[predicted_lifestyle]
     ground_truth_set = option_map[ground_truth_lifestyle]
     if predicted_set and ground_truth_set and predicted_set.intersection(ground_truth_set):
-        return 0.6 if "both" in {predicted_lifestyle, ground_truth_lifestyle} else 0.3
-    return 0.0
+        return clamp01(0.6 if "both" in {predicted_lifestyle, ground_truth_lifestyle} else 0.3)
+    return clamp01(0.01)
 
 
 def llm_grade_treatment(
@@ -386,7 +390,7 @@ def llm_grade_treatment(
         nums = re.findall(r"\d+\.?\d*", raw)
         if not nums:
             return 0.5
-        return float(min(max(float(nums[0]), 0.0), 1.0))
+        return clamp01(float(nums[0]))
     except Exception:
         return 0.5
 
@@ -642,7 +646,7 @@ class BoneEnv:
         """Return final mean score per task for the current episode."""
         result: Dict[str, float] = {}
         for task, scores in self._task_scores.items():
-            result[task] = round(sum(scores) / len(scores), 4) if scores else 0.0
+            result[task] = round(clamp01(sum(scores) / len(scores)), 4) if scores else 0.01
         return result
 
     def _normalize_payload(self, payload: Any) -> Tuple[Optional[str], Dict[str, Any], bool]:
@@ -690,9 +694,9 @@ class BoneEnv:
         class_order = ["osteoporotic", "osteopenic", "normal"]
         if predicted_density in class_order:
             distance = abs(class_order.index(predicted_density) - class_order.index(gt_density))
-            base_score = 1.0 if distance == 0 else (0.5 if distance == 1 else 0.0)
+            base_score = 0.99 if distance == 0 else (0.5 if distance == 1 else 0.01)
         else:
-            base_score = 0.0
+            base_score = 0.01
 
         # Continuous modifier from homogeneity — varies per image
         density_signal = clamp(
@@ -702,13 +706,13 @@ class BoneEnv:
             + self._current_state.get("homogeneity", 0.5) * 0.15
             + self._current_state.get("energy", 0.5) * 0.1
         )
-        density_score = round(base_score * 0.6 + density_signal * 0.4, 4)
+        density_score = round(clamp01(base_score * 0.6 + density_signal * 0.4), 4)
 
         self.episode_state["density_result"] = predicted_density
         self._task_scores["bone_density"] = [density_score]
         info["ground_truth"] = {"bone_density": gt_density}
         info["parsed_action"] = {"density_class": predicted_density}
-        return density_score
+        return clamp01(density_score)
 
     def _handle_risk_step(self, task_name: Optional[str], action: Dict[str, Any], info: Dict[str, Any]) -> float:
         gt_risk = self._compute_ground_truth_risk(self._current_state, self.patient_meta)
@@ -722,7 +726,7 @@ class BoneEnv:
         info["parsed_action"] = {"risk_score": parsed_risk}
         if risk_info:
             info.update(risk_info)
-        return risk_score
+        return clamp01(risk_score)
 
     def _handle_treatment_step(self, task_name: Optional[str], action: Dict[str, Any], info: Dict[str, Any]) -> float:
         density_for_treatment = self.episode_state.get("density_result")
@@ -750,7 +754,7 @@ class BoneEnv:
             ),
             4,
         )
-        final_score = round(rule_score * 0.6 + llm_score * 0.4, 4)
+        final_score = round(clamp01(rule_score * 0.6 + llm_score * 0.4), 4)
 
         self.episode_state["density_result"] = density_for_treatment
         self.episode_state["risk_result"] = risk_for_treatment
@@ -772,7 +776,7 @@ class BoneEnv:
         info["rule_score"] = rule_score
         info["llm_score"] = llm_score
         info["final_score"] = final_score
-        reward = final_score
+        reward = clamp01(final_score)
         return reward
 
     def _handle_follow_up_step(self, task_name: Optional[str], action: Dict[str, Any], info: Dict[str, Any]) -> float:
@@ -799,7 +803,7 @@ class BoneEnv:
         self._task_scores["follow_up_interval"] = [follow_up_score]
         info["ground_truth"] = {"follow_up_interval": gt_follow_up, "density_used": density_for_followup}
         info["parsed_action"] = {"follow_up_interval": predicted_follow_up}
-        return follow_up_score
+        return clamp01(follow_up_score)
 
     def _handle_lifestyle_step(self, task_name: Optional[str], action: Dict[str, Any], info: Dict[str, Any]) -> float:
         gt_density = derive_density_class(self._current_state["mean_intensity"])
@@ -817,23 +821,25 @@ class BoneEnv:
         self._task_scores["lifestyle_recommendation"] = [lifestyle_score]
         info["ground_truth"] = {"lifestyle_recommendation": gt_lifestyle}
         info["parsed_action"] = {"lifestyle_recommendation": predicted_lifestyle}
-        return lifestyle_score
+        return clamp01(lifestyle_score)
 
     def _build_episode_summary(self) -> Dict[str, float]:
-        density_score = self.get_task_scores().get("bone_density", 0.0)
-        risk_score = self.get_task_scores().get("fracture_risk", 0.0)
-        treatment_score = self.get_task_scores().get("treatment", 0.0)
-        follow_up_score = self.get_task_scores().get("follow_up_interval", 0.0)
-        lifestyle_score = self.get_task_scores().get("lifestyle_recommendation", 0.0)
+        density_score = self.get_task_scores().get("bone_density", 0.01)
+        risk_score = self.get_task_scores().get("fracture_risk", 0.01)
+        treatment_score = self.get_task_scores().get("treatment", 0.01)
+        follow_up_score = self.get_task_scores().get("follow_up_interval", 0.01)
+        lifestyle_score = self.get_task_scores().get("lifestyle_recommendation", 0.01)
         total_score = round(
-            (
+            clamp01(
+                (
                 density_score
                 + risk_score
                 + treatment_score
                 + follow_up_score
                 + lifestyle_score
-            )
-            / 5.0,
+                )
+                / 5.0
+            ),
             4,
         )
         return {
@@ -971,8 +977,8 @@ class BoneDensityGrader:
     def grade(env: BoneEnv) -> float:
         scores = env._task_scores.get("bone_density", [])
         if not scores:
-            return 0.0
-        return round(clamp(sum(scores) / len(scores)), 4)
+            return 0.01
+        return round(clamp01(sum(scores) / len(scores)), 4)
 
 
 class FractureRiskGrader:
@@ -984,8 +990,8 @@ class FractureRiskGrader:
     def grade(env: BoneEnv) -> float:
         scores = env._task_scores.get("fracture_risk", [])
         if not scores:
-            return 0.0
-        return round(clamp(sum(scores) / len(scores)), 4)
+            return 0.01
+        return round(clamp01(sum(scores) / len(scores)), 4)
 
 
 class TreatmentRecommendationGrader:
@@ -997,8 +1003,8 @@ class TreatmentRecommendationGrader:
     def grade(env: BoneEnv) -> float:
         scores = env._task_scores.get("treatment", [])
         if not scores:
-            return 0.0
-        return round(clamp(sum(scores) / len(scores)), 4)
+            return 0.01
+        return round(clamp01(sum(scores) / len(scores)), 4)
 
 
 class FollowUpIntervalGrader:
@@ -1010,8 +1016,8 @@ class FollowUpIntervalGrader:
     def grade(env: BoneEnv) -> float:
         scores = env._task_scores.get("follow_up_interval", [])
         if not scores:
-            return 0.0
-        return round(clamp(sum(scores) / len(scores)), 4)
+            return 0.01
+        return round(clamp01(sum(scores) / len(scores)), 4)
 
 
 class LifestyleRecommendationGrader:
@@ -1023,5 +1029,5 @@ class LifestyleRecommendationGrader:
     def grade(env: BoneEnv) -> float:
         scores = env._task_scores.get("lifestyle_recommendation", [])
         if not scores:
-            return 0.0
-        return round(clamp(sum(scores) / len(scores)), 4)
+            return 0.01
+        return round(clamp01(sum(scores) / len(scores)), 4)
