@@ -18,28 +18,24 @@ from models import (
 )
 
 
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
-MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME   = os.getenv("MODEL_NAME",   "meta-llama/Llama-3.3-70B-Instruct")
+HF_TOKEN     = os.getenv("HF_TOKEN")
+
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
+
+client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+
 TASK_NAME = os.getenv("MY_ENV_V4_TASK", "Vertebone-AI")
 BENCHMARK = os.getenv("MY_ENV_V4_BENCHMARK", "vertebone")
 MAX_STEPS = 5
 TEMPERATURE = 0.7
 MAX_TOKENS = 150
 SUCCESS_SCORE_THRESHOLD = 0.1
-HF_API_KEY: str = os.getenv("HF_TOKEN") or os.getenv("HF_API_KEY") or ""
-if not HF_API_KEY:
-    raise ValueError("HF_TOKEN environment variable is required")
 DATASET_DIR: str = os.environ.get("DATASET_DIR", "Dataset")
 EVAL_EPISODES: int = int(os.getenv("EVAL_EPISODES", "8"))
 RESULTS_PATH: str = os.environ.get("RESULTS_PATH", "results.json")
-
-
-def build_client() -> OpenAI:
-    return OpenAI(
-        base_url=API_BASE_URL,
-        api_key=HF_API_KEY,
-        timeout=30.0,
-    )
 
 
 def _normalize_label_action(raw: str, valid: List[str], default: str) -> str:
@@ -59,13 +55,6 @@ def _format_error(error: str | None) -> str:
     if not error:
         return "null"
     return error.replace("\n", " ").strip()
-
-
-def _format_optional_number(value: Any) -> str:
-    try:
-        return f"{float(value):.2f}"
-    except (TypeError, ValueError):
-        return "unknown"
 
 
 def _build_context_text(obs: Dict[str, Any]) -> str:
@@ -99,15 +88,37 @@ def query_llm(client: OpenAI, obs: Dict[str, Any]) -> Dict[str, Any]:
         f"correlation={obs.get('correlation', 0):.4f}"
     )
     context_text = _build_context_text(obs)
+    system_msg = "You are a clinical bone assessment AI."
+    temperature = TEMPERATURE
 
     if step == 0:
         task = "BoneDensityClassification"
-        user_msg = (
-            f"{prompt_text}\n\nImage features: {features_text}\n"
-            f"Context: {context_text}\n\n"
-            "Classify bone density. Reply with exactly one word: "
-            "osteoporotic, osteopenic, or normal."
+        system_msg = (
+            "You are a radiology AI. Classify bone density from MRI features.\n\n"
+            "Rules (follow strictly):\n"
+            "- If mean_intensity < 80: classify as \"osteoporotic\"\n"
+            "- If mean_intensity >= 80 and mean_intensity <= 140: classify as \"osteopenic\"  \n"
+            "- If mean_intensity > 140: classify as \"normal\"\n\n"
+            "Supporting signals:\n"
+            "- homogeneity < 0.5 -> supports osteoporotic\n"
+            "- homogeneity 0.5-0.7 -> supports osteopenic\n"
+            "- homogeneity > 0.7 -> supports normal\n"
+            "- energy < 0.2 -> supports osteoporotic\n"
+            "- energy 0.2-0.35 -> supports osteopenic\n"
+            "- energy > 0.35 -> supports normal\n\n"
+            "Respond with ONLY one word: osteoporotic, osteopenic, or normal"
         )
+        user_msg = (
+            f"mean_intensity: {obs.get('mean_intensity', 0):.2f}\n"
+            f"std_intensity: {obs.get('std_intensity', 0):.2f}\n"
+            f"homogeneity: {obs.get('homogeneity', 0):.4f}\n"
+            f"energy: {obs.get('energy', 0):.4f}\n"
+            f"edge_density: {obs.get('edge_density', 0):.4f}\n"
+            f"age: {obs.get('age', 'unknown')}\n"
+            f"previous_fracture: {obs.get('previous_fracture', 'unknown')}\n\n"
+            "Based on the rules above, classify the bone density:"
+        )
+        temperature = 0.0
         default = "osteopenic"
         valid = DENSITY_CLASSES
     elif step == 1:
@@ -159,11 +170,11 @@ def query_llm(client: OpenAI, obs: Dict[str, Any]) -> Dict[str, Any]:
         response = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
-                {"role": "system", "content": "You are a clinical bone assessment AI."},
+                {"role": "system", "content": system_msg},
                 {"role": "user", "content": user_msg},
             ],
             max_tokens=MAX_TOKENS,
-            temperature=TEMPERATURE,
+            temperature=temperature,
         )
         raw = (response.choices[0].message.content or "").strip().lower()
         if valid is not None:
@@ -186,11 +197,12 @@ def query_llm(client: OpenAI, obs: Dict[str, Any]) -> Dict[str, Any]:
 def run_episode(client: OpenAI, episode_index: int) -> Dict[str, Any]:
     env = BoneEnv(dataset_dir=DATASET_DIR)
     obs = env.reset()
-    print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}")
+    task_name = TASK_NAME
+    print(f"[START] task={task_name} env=vertebone model={MODEL_NAME}")
 
-    all_rewards: List[float] = []
-    error_count = 0
-    success = True
+    rewards: List[float] = []
+    success = False
+    steps = 0
     info: Dict[str, Any] = {}
 
     try:
@@ -201,53 +213,40 @@ def run_episode(client: OpenAI, episode_index: int) -> Dict[str, Any]:
             step_error = payload.get("error")
             if step_error:
                 reward = 0.0
-                error_count += 1
             else:
                 reward = env_reward
-            all_rewards.append(reward)
+            rewards.append(reward)
+            steps = episode_step + 1
 
-            print(
-                f"[STEP] step={episode_step+1} action={payload['action']} "
-                f"reward={reward:.2f} done={'true' if done else 'false'} "
-                f"error={_format_error(step_error)}"
-            )
+            step = episode_step + 1
+            action = payload["action"]
+            error = _format_error(step_error)
+            print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error}")
             if done:
+                success = True
                 break
+        else:
+            success = True
     except Exception:
         success = False
+    finally:
+        print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.2f}' for r in rewards)}")
+        env.close()
 
-    steps = len(all_rewards)
-    if steps == 0:
-        all_rewards = [0.0 for _ in range(MAX_STEPS)]
-        steps = 0
-
-    score = sum(all_rewards) / len(all_rewards) if all_rewards else 0.0
-    rewards_str = ",".join(f"{reward:.2f}" for reward in all_rewards)
-    error_rate = error_count / len(all_rewards) if all_rewards else 0.0
+    score = sum(rewards) / len(rewards) if rewards else 0.0
+    error_rate = round(sum(1 for reward in rewards if reward == 0.0) / len(rewards), 4) if rewards else 0.0
     density_result = env.episode_state.get("density_result", "unknown")
     fracture_risk = env.episode_state.get("risk_result", "unknown")
     treatment_result = env.episode_state.get("treatment_result", "unknown")
     follow_up_result = env.episode_state.get("follow_up_interval_result", "unknown")
     lifestyle_result = env.episode_state.get("lifestyle_recommendation_result", "unknown")
     sex_value = env.patient_meta.get("sex", "unknown")
-
-    print(
-        f"[END] success={'true' if success else 'false'} "
-        f"steps={len(all_rewards) if success else 0} "
-        f"score={score:.2f} rewards={rewards_str} "
-        f"density_acc={density_result} fracture_risk={_format_optional_number(fracture_risk)} "
-        f"treatment={treatment_result} follow_up_interval={follow_up_result} "
-        f"lifestyle_recommendation={lifestyle_result} sex={sex_value} "
-        f"error_rate={error_rate:.2f}"
-    )
-
-    env.close()
     return {
         "episode": episode_index + 1,
         "success": success,
-        "steps": len(all_rewards),
+        "steps": steps,
         "score": round(score, 4),
-        "rewards": [round(reward, 4) for reward in all_rewards],
+        "rewards": [round(reward, 4) for reward in rewards],
         "density_acc": density_result,
         "fracture_risk": None if fracture_risk == "unknown" else fracture_risk,
         "treatment": treatment_result,
@@ -265,7 +264,6 @@ def save_results(results: Dict[str, Any]) -> None:
 
 
 def run_inference() -> None:
-    client = build_client()
     episode_results = [run_episode(client, episode_index) for episode_index in range(EVAL_EPISODES)]
 
     scores = [result["score"] for result in episode_results]
