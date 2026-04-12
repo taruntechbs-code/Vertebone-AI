@@ -212,7 +212,7 @@ def run_episode(client: OpenAI, episode_index: int) -> Dict[str, Any]:
 
             step_error = payload.get("error")
             if step_error:
-                reward = 0.0
+                reward = 0.011
             else:
                 reward = env_reward
             rewards.append(reward)
@@ -281,7 +281,7 @@ def run_inference() -> None:
     per_step_mean_reward = []
     for step_index in range(max_steps):
         step_values = [result["rewards"][step_index] for result in episode_results]
-        per_step_mean_reward.append(round(statistics.fmean(step_values), 4))
+        per_step_mean_reward.append(max(0.01, min(0.99, round(statistics.fmean(step_values), 4))))
 
     evaluation_summary = {
         "task_name": TASK_NAME,

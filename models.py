@@ -255,7 +255,7 @@ def reward_risk_score(predicted_risk: Any, ground_truth_risk: float) -> Tuple[fl
     except (TypeError, ValueError):
         return clamp01(0.01), {"error": "risk_score must be a float"}
 
-    score = max(0.0, 1.0 - abs(predicted_float - ground_truth_risk) * 1.5)
+    score = max(0.01, min(0.99, 1.0 - abs(predicted_float - ground_truth_risk) * 1.5))
     return round(clamp01(score), 4), {}
 
 
