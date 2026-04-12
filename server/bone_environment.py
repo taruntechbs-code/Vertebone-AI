@@ -5,6 +5,10 @@ from models import BoneEnv
 DATASET_DIR = os.environ.get("DATASET_DIR", "Dataset")
 
 
+def clamp01(v):
+    return max(0.01, min(0.99, float(v)))
+
+
 class BoneEnvironment:
     def __init__(self):
         self._env = None
@@ -26,7 +30,8 @@ class BoneEnvironment:
         obs, reward, done, info = self._env.step(action=action, task=task)
         self._step_count += 1
         self._done = done
-        return {"observation": obs, "reward": float(reward), "done": done, "info": info, "step": self._step_count}
+        reward = clamp01(reward)
+        return {"observation": obs, "reward": reward, "done": done, "info": info, "step": self._step_count}
 
     @property
     def state(self) -> dict:
@@ -36,6 +41,15 @@ class BoneEnvironment:
             "done": self._done,
             "episode_state": self._env.episode_state if self._env else {}
         }
+
+    def get_task_scores(self) -> dict:
+        if self._env is None:
+            return {}
+
+        scores = {}
+        for task, value in self._env.get_task_scores().items():
+            scores[task] = max(0.01, min(0.99, round(float(value), 4)))
+        return scores
 
     def close(self):
         if self._env:
