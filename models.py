@@ -565,7 +565,7 @@ class BoneEnv:
     def step(self, action: str, task: str = "BoneDensityClassification") -> Tuple[Dict[str, Any], float, bool, Dict[str, Any]]:
         """Advance the episode by selecting the task handler from the provided task name."""
         if self._done:
-            return {}, 0.0, True, {}
+            return {}, 0.01, True, {}
 
         expected_task = STEP_TO_TASK[self.episode_step]
         info: Dict[str, Any] = {
@@ -582,13 +582,13 @@ class BoneEnv:
         }.get(task)
         if task_name is None:
             info["error"] = "unknown task"
-            observation = self._augment_step_observation(self.state(), action, 0.0)
-            return observation, 0.0, False, info
+            observation = self._augment_step_observation(self.state(), action, 0.01)
+            return observation, 0.01, False, info
 
         if task_name != expected_task:
             info["error"] = f"expected {expected_task} but received {task}"
-            observation = self._augment_step_observation(self.state(), action, 0.0)
-            return observation, 0.0, False, info
+            observation = self._augment_step_observation(self.state(), action, 0.01)
+            return observation, 0.01, False, info
 
         if task_name == "BoneDensityClassification":
             normalized_action = self._normalize_categorical_action(
@@ -644,10 +644,16 @@ class BoneEnv:
 
     def get_task_scores(self) -> Dict[str, float]:
         """Return final mean score per task for the current episode."""
-        result: Dict[str, float] = {}
-        for task, scores in self._task_scores.items():
-            result[task] = round(clamp01(sum(scores) / len(scores)), 4) if scores else 0.01
-        return result
+        scores: Dict[str, float] = {}
+        for task_name, task_scores in self._task_scores.items():
+            if not task_scores:
+                scores[task_name] = 0.01
+                continue
+            mean_value = sum(task_scores) / len(task_scores)
+            raw = clamp01(mean_value)
+            rounded = round(raw, 4)
+            scores[task_name] = max(0.01, min(0.99, rounded))
+        return scores
 
     def _normalize_payload(self, payload: Any) -> Tuple[Optional[str], Dict[str, Any], bool]:
         """Validate the wrapper format and detect wrong-step action usage."""
@@ -926,7 +932,7 @@ class BoneEnv:
             + features["energy"] * 0.3
             + features["correlation"] * 0.2
         )
-        bone_quality = max(0.0, min(1.0, bone_quality))
+        bone_quality = max(0.01, min(0.99, bone_quality))
         age_factor = clamp((patient_meta["age"] - 40) / 45.0)
         bmi = float(patient_meta["bmi"])
         if bmi < 18.5:
@@ -944,7 +950,7 @@ class BoneEnv:
         steroid_multiplier = 1.2 if patient_meta["glucocorticoid_use"] else 1.0
         raw_risk = (1.0 - bone_quality) * 0.45 + age_factor * 0.3 + bmi_factor * 0.15
         raw_risk *= sex_factor * fracture_multiplier * steroid_multiplier
-        return round(max(0.0, min(1.0, raw_risk)), 3)
+        return round(max(0.01, min(0.99, raw_risk)), 3)
 
     def _load_current_image(self) -> None:
         image_files = [
